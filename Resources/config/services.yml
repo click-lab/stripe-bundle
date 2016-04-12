@@ -1,0 +1,53 @@
+parameters:
+    clab_stripe.plan.form.type.class: Clab\StripeBundle\Form\Type\PlanFormType
+    clab_stripe.plan.form.handler.class: Clab\StripeBundle\Form\Handler\PlanFormHandler
+
+services:
+    clab_stripe.stripe_plan.manager:
+        class: Clab\StripeBundle\Stripe\PlanManager
+        arguments: ['%stripe_secret_key%']
+
+    clab_stripe.plan.form.type:
+        class: %clab_stripe.plan.form.type.class%
+        arguments: [null]
+        tags:
+            - { name: form.type, alias: clab_stripe_plan }
+
+    clab_stripe.plan.form:
+        class: Symfony\Component\Form\Form
+        factory_method: createNamed
+        factory_service: form.factory
+        arguments: ["@clab_stripe.plan.form.type"]
+        scope: request
+
+    clab_stripe.customer.manager:
+        class: Clab\StripeBundle\Manager\CustomerManager
+        arguments: ["@request", "@doctrine.orm.entity_manager", "@fos_user.user_manager", "@clab_stripe.plan.manager", %stripe_secret_key%, %stripe_secret_key%]
+        scope: request
+
+    clab_stripe.form.handler:
+        class: %clab_stripe.plan.form.handler.class%
+        arguments: ["@clab_stripe.plan.form", "@request", "@event_dispatcher" ,"@clab_stripe.stripe_plan.manager", "@clab_stripe.stripe_plan.manager"]
+        scope: request
+
+    clab_stripe.plan.manager:
+        class: Clab\StripeBundle\Manager\PlanManager
+        arguments: ["@doctrine.orm.entity_manager",%stripe_secret_key%]
+    clab_stripe.coupon.manager:
+        class: Clab\StripeBundle\Manager\CouponManager
+        arguments: ["@doctrine.orm.entity_manager"]
+
+    clab_stripe.mailer:
+        class: Clab\StripeBundle\Mailer\Mailer
+        arguments: ['@mailer', '@security.context', '@router', '@templating', {'from_email': '%mailer_user%','email_signature': "sacha@click-eat.fr"}]
+    clab_stripe_hook.listener:
+        class: Clab\StripeBundle\Listener\HookListener
+        arguments: ["@clab_stripe.mailer", "@fos_user.user_manager"]
+        tags:
+            - { name: kernel.event_listener, event: clab_stripe.hook.charge.succeeded, method: chargeSucceeded }
+            - { name: kernel.event_listener, event: clab_stripe.hook.charge.failed, method: chargeFailed }
+            - { name: kernel.event_listener, event: clab_stripe.hook.invoice.created, method: invoiceCreated }
+            - { name: kernel.event_listener, event: clab_stripe.hook.invoice.payment_succeeded, method: invoicePaymentSucceeded }
+            - { name: kernel.event_listener, event: clab_stripe.hook.charge.invoice.payment_failed, method: invoicePaymentFailed }
+            - { name: kernel.event_listener, event: clab_stripe.hook.account.application.deauthorized, method: accountApplicationDeauthorized }
+

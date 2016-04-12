@@ -1,0 +1,38 @@
+{
+  "name" : "clicklab/stripebundle",
+  "description" : "Stripe Bundle",
+  "type" : "symfony-bundle",
+  "authors" : [{
+    "name" : "sacha",
+    "email" : "sacha@click-eat.fr"
+  }],
+  "keywords" : [
+    "stripe bundle"
+  ],
+  "license" : [
+    "MIT"
+  ],
+  "require" : {
+    "friendsofsymfony/user-bundle": "dev-master",
+    "stripe/stripe-php": "^3.6",
+    "liip/imagine-bundle": "^1.3",
+    "clicklab/boardbundle":"1.*",
+    "symfony/symfony": "2.7.*",
+    "doctrine/orm": "^2.4.8",
+    "doctrine/doctrine-bundle": "~1.4"
+  },
+  "autoload" : {
+    "psr-0" : {
+      "Clab\\StripeBundle" : ""
+    }
+  },
+  "target-dir" : "Clab/StripeBundle",
+  "repositories" : [{
+     "type": "vcs", "url": "https://github.com/click-lab/stripe-bundle"
+  }],
+  "extra" : {
+    "branch-alias" : {
+      "dev-master" : "master"
+    }
+  }
+}
