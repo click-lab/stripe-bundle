@@ -16,7 +16,6 @@
     "friendsofsymfony/user-bundle": "dev-master",
     "stripe/stripe-php": "^3.6",
     "liip/imagine-bundle": "^1.3",
-    "clicklab/boardbundle":"1.*",
     "symfony/symfony": "2.7.*",
     "doctrine/orm": "^2.4.8",
     "doctrine/doctrine-bundle": "~1.4"
