@@ -67,14 +67,14 @@ class CustomerManager
     /**
      * Process a Stripe token.
      */
-    public function process(Plan $plan = null, Restaurant $restaurant)
+    public function process(Plan $plan = null, $object,$email)
     {
-        if ($restaurant->getStripeCustomerId()) {
-            $subscription = $this->update($plan, $restaurant);
+        if ($object->getStripeCustomerId()) {
+            $subscription = $this->update($plan, $object);
 
             return $subscription;
         } else {
-            $subscription = $this->create($plan, $restaurant);
+            $subscription = $this->create($plan,$email, $object);
 
             return $subscription;
         }
@@ -83,10 +83,10 @@ class CustomerManager
     /**
      * Process a Stripe token.
      */
-    public function upgrade(Restaurant $restaurant, $currentSubscription, Plan $newPlan)
+    public function upgrade($object, $currentSubscription, Plan $newPlan)
     {
-        if ($restaurant->getStripeCustomerId()) {
-            $cus = Customer::retrieve($restaurant->getStripeCustomerId());
+        if ($object->getStripeCustomerId()) {
+            $cus = Customer::retrieve($object->getStripeCustomerId());
             $subscription = $cus->subscriptions->retrieve($currentSubscription);
 
             $subscription->plan = $newPlan;
@@ -105,14 +105,14 @@ class CustomerManager
             'email' => 'test@click-eat.fr',
             'plan' => 'annuelnul', ));
     }
-    public function create(Plan $plan, Restaurant $restaurant)
+    public function create(Plan $plan,$email,$object)
     {
         if ($plan) {
             try {
                 $customer = Customer::create(array(
-              'card' => $this->getToken(),
-              'email' => $restaurant->getManagerEmail(),
-            ));
+                    'card' => $this->getToken(),
+                    'email' => $email,
+                ));
 
                 $subscription = $customer->subscriptions->create(array('plan' => $plan->__toArray()['id'], 'tax_percent' => 20));
                 $subscription->save();
@@ -125,18 +125,13 @@ class CustomerManager
             try {
                 $customer = Customer::create(array(
                     'card' => $this->getToken(),
-                    'email' => $restaurant->getManagerEmail(),
+                    'email' => $email,
                 ));
             } catch (\Error $e) {
                 return false;
             }
         }
-        $restaurant->setStripeCustomerId($customer->id);
-
-        $card = $customer->active_card;
-        if ($card) {
-            $restaurant->setIsStripeCustomerActive(true);
-        }
+        $object->setStripeCustomerId($customer->id);
         $this->em->flush();
 
         return true;
@@ -145,9 +140,9 @@ class CustomerManager
     /*
      * Update a Stripe Customer
      */
-    public function update(Plan $plan, Restaurant $restaurant)
+    public function update(Plan $plan, $object)
     {
-        $customer = $this->retrieve($restaurant->getStripeCustomerId());
+        $customer = $this->retrieve($object->getStripeCustomerId());
 
         $token = $this->getToken();
 
@@ -158,7 +153,7 @@ class CustomerManager
             $card = $customer->card;
 
             if ($card) {
-                $restaurant->setIsStripeCustomerActive(true);
+                $object->setIsStripeCustomerActive(true);
             }
         }
 
