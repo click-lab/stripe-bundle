@@ -227,9 +227,9 @@ class CustomerManager
         return $this->request->request->get('stripeToken');
     }
 
-    public function listCards(Restaurant $restaurant)
+    public function listCards($entity)
     {
-        $stripeCustomerId = $restaurant->getStripeCustomerId();
+        $stripeCustomerId = $entity->getStripeCustomerId();
         try {
             $cards = Customer::retrieve($stripeCustomerId)->sources->all(array('object' => 'card'));
 
@@ -238,6 +238,40 @@ class CustomerManager
             throw $e;
         }
     }
+
+    public function newCard($entity)
+    {
+        if(!is_null($entity->getStripeCustomerId()))
+        {
+            try
+            {
+                Customer::retrieve($entity->getStripeCustomerId())->sources->create(array('source' => $this->getToken()));
+            }
+            catch(Base $e)
+            {
+                throw $e;
+            }
+        }
+        else
+        {
+            try {
+                $customer = Customer::create(array(
+                    'card' => $this->getToken(),
+                    'email' => $entity->getEmail(),
+                ));
+                $customer->setStripeCustomerId($customer->id);
+                $this->em->flush();
+
+                return true;
+            }
+            catch(Base $e)
+            {
+                throw $e;
+            }
+        }
+        return true;
+    }
+
     public function createCard(Restaurant $restaurant)
     {
         $stripeCustomerId = $restaurant->getStripeCustomerId();
@@ -250,9 +284,9 @@ class CustomerManager
         }
     }
 
-    public function deleteCard(Restaurant $restaurant, $card)
+    public function deleteCard($entity, $card)
     {
-        $stripeCustomerId = $restaurant->getStripeCustomerId();
+        $stripeCustomerId = $entity->getStripeCustomerId();
         Customer::retrieve($stripeCustomerId)->sources->retrieve($card)->delete();
     }
 
