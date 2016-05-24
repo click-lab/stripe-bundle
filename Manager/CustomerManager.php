@@ -64,6 +64,26 @@ class CustomerManager
             throw $e;
         }
     }
+
+    /**
+     * Method that charge a customer card.
+     */
+    public function chargeCardForClickeat($entity, $amount, Card $card)
+    {
+        try {
+            Charge::create(array(
+                'amount' => $amount,
+                'currency' => 'eur',
+                'customer' => $entity->getStripeCustomerId(),
+                'card' => $card->id,
+            ));
+
+            return true;
+        } catch (Base $e) {
+            throw $e;
+        }
+    }
+
     /**
      * Process a Stripe token.
      */
@@ -259,7 +279,7 @@ class CustomerManager
                     'card' => $this->getToken(),
                     'email' => $entity->getEmail(),
                 ));
-                $customer->setStripeCustomerId($customer->id);
+                $entity->setStripeCustomerId($customer->id);
                 $this->em->flush();
 
                 return true;
