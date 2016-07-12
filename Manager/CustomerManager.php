@@ -16,14 +16,14 @@ use Stripe\Error\Base;
 use Stripe\Invoice;
 use Stripe\Plan;
 use Stripe\Stripe;
+use Stripe\Token;
 use Symfony\Component\HttpFoundation\Request;
 use FOS\UserBundle\Model\UserManagerInterface;
+use Symfony\Component\VarDumper\VarDumper;
 
 /**
  * Processes a Stripe token and adds the Stripe Customer to the User
  * as well as subscribe the user to a plan.
- *
- * @author Sacha Masson <sacha@click-eat.fr>
  */
 class CustomerManager
 {
@@ -87,14 +87,14 @@ class CustomerManager
     /**
      * Process a Stripe token.
      */
-    public function process(Plan $plan = null, $object,$email)
+    public function process(Plan $plan = null, $object, $email)
     {
         if ($object->getStripeCustomerId()) {
             $subscription = $this->update($plan, $object);
 
             return $subscription;
         } else {
-            $subscription = $this->create($plan,$email, $object);
+            $subscription = $this->create($plan, $email, $object);
 
             return $subscription;
         }
@@ -125,7 +125,8 @@ class CustomerManager
             'email' => 'test@click-eat.fr',
             'plan' => 'annuelnul', ));
     }
-    public function create(Plan $plan,$email,$object)
+
+    public function create($plan, $email, $object)
     {
         if ($plan) {
             try {
@@ -151,6 +152,7 @@ class CustomerManager
                 return false;
             }
         }
+
         $object->setStripeCustomerId($customer->id);
         $this->em->flush();
 
@@ -249,52 +251,52 @@ class CustomerManager
 
     public function listCards($entity)
     {
-        $stripeCustomerId = $entity->getStripeCustomerId();
-        try {
-            $cards = Customer::retrieve($stripeCustomerId)->sources->all(array('object' => 'card'));
+        if(!is_null($entity->getStripeCustomerId())) {
+            $stripeCustomerId = $entity->getStripeCustomerId();
+            try {
+                $cards = Customer::retrieve($stripeCustomerId)->sources->all(array('object' => 'card'));
 
-            return $cards;
-        } catch (Base $e) {
-            throw $e;
+                return $cards;
+            } catch (Base $e) {
+                throw $e;
+            }
+        }else{
+            return false;
         }
+
     }
 
     public function newCard($entity)
     {
-        if(!is_null($entity->getStripeCustomerId()))
-        {
-            try
-            {
+        if (!is_null($entity->getStripeCustomerId())) {
+            try {
                 Customer::retrieve($entity->getStripeCustomerId())->sources->create(array('source' => $this->getToken()));
-            }
-            catch(Base $e)
-            {
+            } catch (Base $e) {
                 throw $e;
             }
-        }
-        else
-        {
+        } else {
             try {
                 $customer = Customer::create(array(
                     'card' => $this->getToken(),
                     'email' => $entity->getEmail(),
                 ));
+
                 $entity->setStripeCustomerId($customer->id);
                 $this->em->flush();
 
                 return true;
-            }
-            catch(Base $e)
-            {
+            } catch (Base $e) {
                 throw $e;
             }
         }
+
         return true;
     }
 
-    public function createCard(Restaurant $restaurant)
+    public function createCard($entity)
     {
-        $stripeCustomerId = $restaurant->getStripeCustomerId();
+        $stripeCustomerId = $entity->getStripeCustomerId();
+
         try {
             Customer::retrieve($stripeCustomerId)->sources->create(array('source' => $this->getToken()));
 
@@ -302,6 +304,24 @@ class CustomerManager
         } catch (Base $e) {
             throw $e;
         }
+    }
+
+    public function addCard($cardData) {
+        $customer = Customer::retrieve($cardData['token']);
+
+        $card = $customer->sources->create(
+            array(
+                'card' =>
+                    array(
+                        'number' => $cardData['card'],
+                        'exp_month' => $cardData['month'],
+                        'exp_year' => $cardData['year'],
+                        'cvc' => $cardData['cvc']
+                    )
+            )
+        );
+
+        return $card;
     }
 
     public function deleteCard($entity, $card)
@@ -341,5 +361,11 @@ class CustomerManager
         $response = Invoice::retrieve($id)->lines->all();
 
         return $response;
+    }
+
+    public function getCard($user, $cardToken) {
+        $stripeCustomerId = $user->getStripeCustomerId();
+
+        return Customer::retrieve($stripeCustomerId)->sources->retrieve($cardToken);
     }
 }
